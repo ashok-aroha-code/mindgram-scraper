@@ -23,6 +23,11 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
+
+# Add the parent directory to sys.path so we can import 'scraper_pipeline'
+# as a top-level package even when run.py is executed directly.
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from scraper_pipeline import Pipeline, PipelineConfig
 from scraper_pipeline.config import (
