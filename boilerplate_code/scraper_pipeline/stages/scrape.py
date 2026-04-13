@@ -34,6 +34,7 @@ from scraper_pipeline.extractors.base import BaseExtractor
 from scraper_pipeline.models import CheckpointManager, ScrapeResult, StatsTracker
 from scraper_pipeline.utils.driver import create_driver
 from scraper_pipeline.utils.io import append_jsonl, jsonl_to_json
+from scraper_pipeline.utils.cloudflare import wait_for_cloudflare_clearance
 
 _log = logging.getLogger(__name__)
 
@@ -261,17 +262,16 @@ class ScraperEngine:
     # -----------------------------------------------------------------------
 
     def _navigate_and_wait(self, driver: object, url: str, is_first: bool) -> None:
-        """Load URL, optionally wait for manual CAPTCHA, then wait for page indicator."""
+        """Load URL, handle Cloudflare, then wait for page indicator."""
         cfg = self._cfg
         driver.get(url)
 
-        if is_first and cfg.first_page_wait > 0:
-            _log.info(
-                "First URL — pausing %ds for manual verification...",
-                cfg.first_page_wait,
-            )
-            time.sleep(cfg.first_page_wait)
-        else:
+        # Robust Cloudflare handling
+        if not wait_for_cloudflare_clearance(driver, cfg.cloudflare, url):
+            # If Cloudflare isn't cleared, we'll likely fail the indicator check below
+            _log.warning("Could not clear Cloudflare for: %s", url)
+
+        if not is_first:
             time.sleep(random.uniform(1.0, cfg.post_nav_jitter))
 
         try:

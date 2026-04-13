@@ -24,6 +24,7 @@ from selenium.common.exceptions import TimeoutException
 from scraper_pipeline.config import CollectorConfig
 from scraper_pipeline.utils.driver import create_driver
 from scraper_pipeline.utils.io import write_json
+from scraper_pipeline.utils.cloudflare import wait_for_cloudflare_clearance
 
 _log = logging.getLogger(__name__)
 
@@ -88,14 +89,10 @@ class URLCollector:
                 driver = create_driver(cfg.chrome)
                 driver.get(url)
 
-                if page_number == 1 and cfg.first_page_wait > 0:
-                    _log.info(
-                        "First page — pausing %ds for manual verification...",
-                        cfg.first_page_wait,
-                    )
-                    time.sleep(cfg.first_page_wait)
-                else:
-                    time.sleep(cfg.page_load_wait)
+                # Robust Cloudflare handling: auto-bypass -> human interaction
+                if not wait_for_cloudflare_clearance(driver, cfg.cloudflare, url):
+                    _log.error("Failed to clear Cloudflare — aborting collection for: %s", url)
+                    return []
 
                 elements = WebDriverWait(driver, 20).until(
                     EC.presence_of_all_elements_located(

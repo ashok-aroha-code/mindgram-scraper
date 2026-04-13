@@ -31,6 +31,15 @@ _DEFAULT_USER_AGENTS: List[str] = [
 ]
 
 
+@dataclass
+class CloudflareConfig:
+    """Settings for handling Cloudflare challenges."""
+
+    auto_wait_seconds: int = 10  # Wait for UD driver to auto-solve
+    total_timeout_seconds: int = 300  # Total time (including human intervention)
+    check_interval: float = 1.0  # Polling interval
+
+
 # ---------------------------------------------------------------------------
 # Shared Chrome settings (reused by both the collector and scraper stages)
 # ---------------------------------------------------------------------------
@@ -71,6 +80,7 @@ class CollectorConfig:
     first_page_wait: int = 30  # seconds for manual CAPTCHA on page 1
     max_retries: int = 3
     chrome: ChromeConfig = field(default_factory=ChromeConfig)
+    cloudflare: CloudflareConfig = field(default_factory=CloudflareConfig)
 
 
 # ---------------------------------------------------------------------------
@@ -112,6 +122,7 @@ class ScraperConfig:
 
     # --- Chrome ---------------------------------------------------------------
     chrome: ChromeConfig = field(default_factory=ChromeConfig)
+    cloudflare: CloudflareConfig = field(default_factory=CloudflareConfig)
 
 
 # ---------------------------------------------------------------------------
