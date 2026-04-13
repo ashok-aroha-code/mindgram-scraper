@@ -87,7 +87,15 @@ class URLCollector:
             try:
                 driver = create_driver(cfg.chrome)
                 driver.get(url)
-                time.sleep(cfg.page_load_wait)
+
+                if page_number == 1 and cfg.first_page_wait > 0:
+                    _log.info(
+                        "First page — pausing %ds for manual verification...",
+                        cfg.first_page_wait,
+                    )
+                    time.sleep(cfg.first_page_wait)
+                else:
+                    time.sleep(cfg.page_load_wait)
 
                 elements = WebDriverWait(driver, 20).until(
                     EC.presence_of_all_elements_located(

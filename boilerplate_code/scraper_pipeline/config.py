@@ -38,7 +38,7 @@ _DEFAULT_USER_AGENTS: List[str] = [
 
 @dataclass
 class ChromeConfig:
-    chrome_version: int = 135
+    chrome_version: int = 146
     headless: bool = False
     user_agents: List[str] = field(default_factory=lambda: list(_DEFAULT_USER_AGENTS))
 
@@ -68,6 +68,7 @@ class CollectorConfig:
 
     page_load_wait: int = 10  # seconds to sleep after driver.get()
     inter_page_delay: int = 3  # seconds between pages
+    first_page_wait: int = 30  # seconds for manual CAPTCHA on page 1
     max_retries: int = 3
     chrome: ChromeConfig = field(default_factory=ChromeConfig)
 

@@ -55,7 +55,7 @@ def build_config(args: argparse.Namespace) -> PipelineConfig:
         4. ScraperConfig.page_load_indicator_xpath if the site structure differs
     """
     chrome = ChromeConfig(
-        chrome_version=135,  # ✏️  match your installed Chrome major version
+        chrome_version=146,  # ✏️  match your installed Chrome major version
         headless=args.headless,
     )
 
