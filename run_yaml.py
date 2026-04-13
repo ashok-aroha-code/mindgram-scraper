@@ -73,7 +73,7 @@ def run_from_yaml(yaml_path: str, headless: bool = False):
     # 5. Full Pipeline Config
     cfg = PipelineConfig(
         work_dir=work_dir,
-        output_file=output_file,
+        scraped_data_file=output_file,
         collector=collector,
         scraper=scraper
     )
