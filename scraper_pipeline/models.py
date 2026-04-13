@@ -186,20 +186,19 @@ class PipelineResult:
     scraped_partial: int = 0
     scraped_failed: int = 0
     scraped_skipped: int = 0
-    abstracts_numbered: int = 0
+    scraped_skipped: int = 0
     output_file: str = ""
 
     def log(self) -> None:
         _log.info(
             "=== PIPELINE COMPLETE === "
             "collected=%d deduped=%d scraped(ok=%d partial=%d fail=%d skip=%d) "
-            "numbered=%d → %s",
+            "→ %s",
             self.urls_collected,
             self.urls_after_dedup,
             self.scraped_success,
             self.scraped_partial,
             self.scraped_failed,
             self.scraped_skipped,
-            self.abstracts_numbered,
             self.output_file,
         )

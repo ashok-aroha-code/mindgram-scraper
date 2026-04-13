@@ -12,16 +12,14 @@ import logging
 import argparse
 from pathlib import Path
 
-# Add project root to sys.path
-sys.path.append(str(Path(__file__).resolve().parent.parent))
+# Imports from scraper_pipeline (assumed to be in root)
+from scraper_pipeline import Pipeline, PipelineConfig
 
 from scraper_pipeline import Pipeline, PipelineConfig
 from scraper_pipeline.config import (
     ChromeConfig,
     CollectorConfig,
     ScraperConfig,
-    NumberConfig,
-    MeetingConfig,
     CloudflareConfig
 )
 from scraper_pipeline.extractors.generic import GenericExtractor
@@ -31,6 +29,10 @@ _log = logging.getLogger(__name__)
 def load_yaml(path: str) -> dict:
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+def get_work_dir(name: str) -> str:
+    """Sanitize name to use as a valid folder name."""
+    return "".join(c if c.isalnum() else "_" for c in name).strip("_")
 
 def run_from_yaml(yaml_path: str, headless: bool = False):
     data = load_yaml(yaml_path)
@@ -64,20 +66,16 @@ def run_from_yaml(yaml_path: str, headless: bool = False):
         chrome=chrome
     )
 
-    # 4. Packaging Config
-    meeting = MeetingConfig(
-        meeting_name=name,
-        date=data.get("date", "2026-01-01"),
-        link=listing.get("urls", [None])[0]
-    )
+    # 4. Folder organization
+    work_dir = get_work_dir(name)
+    _log.info("Output folder: %s", work_dir)
 
     # 5. Full Pipeline Config
     cfg = PipelineConfig(
-        work_dir=".",
+        work_dir=work_dir,
         output_file=output_file,
         collector=collector,
-        scraper=scraper,
-        meeting=meeting
+        scraper=scraper
     )
 
     # Instantiate Generic Extractor from YAML fields

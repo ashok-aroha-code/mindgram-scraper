@@ -1,0 +1,125 @@
+"""
+pipeline.py — orchestrates all core stages end-to-end.
+
+Typical usage:
+    from scraper_pipeline import Pipeline, PipelineConfig
+    from scraper_pipeline.config import CollectorConfig, ChromeConfig
+
+    cfg = PipelineConfig(
+        work_dir="./WCN_2026",
+        collector=CollectorConfig(
+            page_urls=["https://example.org/issue/ABC?pageStart=0"],
+            css_selector="h3 a",
+        ),
+        output_file="results.json"
+    )
+    result = Pipeline(cfg, extractor=GenericExtractor(fields)).run()
+
+Wait for completed stages:
+    cfg.run_collect = False   # raw_urls.json already exists
+    cfg.run_scrape  = False   # scraped_data.json already exists
+    Pipeline(cfg, extractor=...).run()
+"""
+
+from __future__ import annotations
+
+import logging
+import sys
+from pathlib import Path
+from typing import Optional
+
+from scraper_pipeline.config import PipelineConfig
+from scraper_pipeline.extractors.base import BaseExtractor
+from scraper_pipeline.models import PipelineResult
+from scraper_pipeline.stages.collect import URLCollector
+from scraper_pipeline.stages.deduplicate import URLDeduplicator
+from scraper_pipeline.stages.scrape import ScraperEngine
+from scraper_pipeline.utils.io import read_json
+from scraper_pipeline.utils.logging_setup import setup_logging
+
+_log = logging.getLogger(__name__)
+
+
+class Pipeline:
+    """
+    Runs the generic scraping pipeline:
+
+        1. collect      URLCollector     → raw_urls.json
+        2. deduplicate  URLDeduplicator  → article_urls.json
+        3. scrape       ScraperEngine    → scraped_data.json
+    """
+
+    def __init__(
+        self,
+        cfg: PipelineConfig,
+        extractor: BaseExtractor,
+    ) -> None:
+        self._cfg = cfg
+        self._extractor = extractor
+
+    def run(self) -> PipelineResult:
+        """
+        Execute enabled pipeline stages in order.
+        """
+        cfg = self._cfg
+        work = Path(cfg.work_dir)
+        work.mkdir(parents=True, exist_ok=True)
+
+        setup_logging(
+            log_file=cfg.resolve(cfg.log_file),
+            max_bytes=cfg.log_max_bytes,
+            backup_count=cfg.log_backup_count,
+        )
+        _log.info("=" * 60)
+        _log.info("Pipeline starting | work_dir=%s", work)
+        _log.info(
+            "Stages: collect=%s dedup=%s scrape=%s",
+            cfg.run_collect,
+            cfg.run_deduplicate,
+            cfg.run_scrape,
+        )
+
+        result = PipelineResult()
+
+        # --- Stage 1: Collect ------------------------------------------------
+        raw_urls_path = cfg.resolve(cfg.raw_urls_file)
+
+        if cfg.run_collect:
+            _log.info("--- Stage 1: URL collection ---")
+            raw = URLCollector(cfg.collector).run(raw_urls_path)
+            result.urls_collected = sum(len(v) for v in raw.values())
+        else:
+            if raw_urls_path.exists():
+                raw = read_json(raw_urls_path)
+                result.urls_collected = sum(len(v) if isinstance(v, list) else 0 for v in raw.values())
+
+        # --- Stage 2: Deduplicate --------------------------------------------
+        article_urls_path = cfg.resolve(cfg.article_urls_file)
+
+        if cfg.run_deduplicate:
+            _log.info("--- Stage 2: Deduplication ---")
+            urls = URLDeduplicator.run(raw_urls_path, article_urls_path)
+            result.urls_after_dedup = len(urls)
+        else:
+            if article_urls_path.exists():
+                urls = read_json(article_urls_path)
+                result.urls_after_dedup = len(urls)
+
+        # --- Stage 3: Scrape -------------------------------------------------
+        scraped_path = cfg.resolve(cfg.scraped_data_file)
+
+        if cfg.run_scrape:
+            _log.info("--- Stage 3: Scraping (%d URLs) ---", len(urls))
+            stats = ScraperEngine(cfg.scraper, self._extractor).run(
+                urls=urls,
+                output_path=scraped_path,
+                checkpoint_path=cfg.resolve(cfg.checkpoint_file),
+            )
+            result.scraped_success = stats.success
+            result.scraped_partial = stats.partial
+            result.scraped_failed = stats.failed
+            result.scraped_skipped = stats.skipped
+            result.output_file = str(scraped_path)
+
+        result.log()
+        return result
