@@ -22,26 +22,33 @@ _log = logging.getLogger(__name__)
 def create_driver(cfg: ChromeConfig) -> uc.Chrome:
     """
     Build and return an undetected Chrome driver.
-    Applies all bot-detection bypass flags and optionally rotates user-agent.
     """
     options = uc.ChromeOptions()
     options.headless = cfg.headless
-    options.add_argument("--disable-blink-features=AutomationControlled")
+    
+    # Redundant flags removed to prevent fingerprint inconsistency
     options.add_argument("--disable-extensions")
     options.add_argument("--disable-popup-blocking")
     options.add_argument("--start-maximized")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--no-first-run")
+    options.add_argument("--no-service-autorun")
 
     if cfg.user_agents:
         options.add_argument(f"--user-agent={random.choice(cfg.user_agents)}")
 
-    driver = uc.Chrome(options=options, version_main=cfg.chrome_version)
-    driver.execute_script(
-        "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+    # Initialize driver with persistent profile if configured
+    driver = uc.Chrome(
+        options=options, 
+        version_main=cfg.chrome_version,
+        user_data_dir=cfg.user_data_dir,
+        use_subprocess=True
     )
+    
     _log.debug(
-        "Driver created (version=%d, headless=%s)", cfg.chrome_version, cfg.headless
+        "Driver created (version=%d, headless=%s, profile=%s)", 
+        cfg.chrome_version, cfg.headless, cfg.user_data_dir
     )
     return driver
 

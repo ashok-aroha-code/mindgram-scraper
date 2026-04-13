@@ -76,7 +76,7 @@ def wait_for_cloudflare_clearance(
             )
             human_prompted = True
 
-        time.sleep(cfg.check_interval)
+        time.sleep(2.0)
 
     _log.error("Cloudflare clearance timed out after %ds for %s", cfg.total_timeout_seconds, url)
     return False
