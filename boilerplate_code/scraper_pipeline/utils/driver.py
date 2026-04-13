@@ -34,21 +34,36 @@ def create_driver(cfg: ChromeConfig) -> uc.Chrome:
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--no-first-run")
     options.add_argument("--no-service-autorun")
+    options.add_argument("--no-default-browser-check")
+    
+    # Suppress "Who's using Chrome?" and Search Engine Choice screens
+    options.add_argument("--disable-features=SearchEngineChoice,ProfilePicker")
 
     if cfg.user_agents:
         options.add_argument(f"--user-agent={random.choice(cfg.user_agents)}")
 
+    # Ensure user_data_dir is absolute for stability
+    user_data_dir = None
+    if cfg.user_data_dir:
+        from pathlib import Path
+        user_data_dir = str(Path(cfg.user_data_dir).resolve())
+
     # Initialize driver with persistent profile if configured
-    driver = uc.Chrome(
-        options=options, 
-        version_main=cfg.chrome_version,
-        user_data_dir=cfg.user_data_dir,
-        use_subprocess=True
-    )
+    try:
+        driver = uc.Chrome(
+            options=options, 
+            version_main=cfg.chrome_version,
+            user_data_dir=user_data_dir,
+            use_subprocess=True
+        )
+    except Exception as exc:
+        _log.error("Failed to start undetected-chromedriver: %s", exc)
+        _log.info("TIP: Try running 'taskkill /f /im chrome.exe' in your terminal and delete the 'chrome_profile' folder.")
+        raise
     
     _log.debug(
         "Driver created (version=%d, headless=%s, profile=%s)", 
-        cfg.chrome_version, cfg.headless, cfg.user_data_dir
+        cfg.chrome_version, cfg.headless, user_data_dir
     )
     return driver
 

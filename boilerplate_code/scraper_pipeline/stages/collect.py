@@ -42,13 +42,7 @@ class URLCollector:
 
     def run(self, output_path: Path) -> dict[str, list[str]]:
         """
-        Collect URLs from all configured listing pages.
-
-        Args:
-            output_path: Where to write the page-keyed URL dict (raw_urls.json).
-
-        Returns:
-            OrderedDict mapping "page_N" → list of article URLs.
+        Collect URLs from all configured listing pages using a single browser instance.
         """
         cfg = self._cfg
         if not cfg.page_urls:
@@ -56,15 +50,28 @@ class URLCollector:
             return {}
 
         results: dict[str, list[str]] = OrderedDict()
+        driver = None
 
-        for idx, page_url in enumerate(cfg.page_urls, 1):
-            _log.info("Collecting page %d/%d: %s", idx, len(cfg.page_urls), page_url)
-            urls = self._collect_one_page(page_url, idx)
-            results[f"page_{idx}"] = urls
-            _log.info("  → %d URLs collected", len(urls))
+        try:
+            # Open browser once for all pages
+            driver = create_driver(cfg.chrome)
 
-            if idx < len(cfg.page_urls):
-                time.sleep(cfg.inter_page_delay)
+            for idx, page_url in enumerate(cfg.page_urls, 1):
+                _log.info("Collecting page %d/%d: %s", idx, len(cfg.page_urls), page_url)
+                urls = self._collect_one_page(driver, page_url, idx)
+                results[f"page_{idx}"] = urls
+                _log.info("  → %d URLs collected", len(urls))
+
+                if idx < len(cfg.page_urls):
+                    time.sleep(cfg.inter_page_delay)
+
+        finally:
+            if driver is not None:
+                try:
+                    driver.quit()
+                    _log.debug("Collector browser closed.")
+                except Exception:
+                    pass
 
         write_json(output_path, results)
         total = sum(len(v) for v in results.values())
@@ -76,22 +83,20 @@ class URLCollector:
         )
         return results
 
-    def _collect_one_page(self, url: str, page_number: int) -> list[str]:
+    def _collect_one_page(self, driver: uc.Chrome, url: str, page_number: int) -> list[str]:
         """
-        Open `url` in a new browser, wait for links, scrape hrefs, close browser.
+        Navigate to `url` using existing `driver`, scrape hrefs.
         Retries up to CollectorConfig.max_retries times on timeout.
         """
         cfg = self._cfg
 
         for attempt in range(1, cfg.max_retries + 1):
-            driver = None
             try:
-                driver = create_driver(cfg.chrome)
                 driver.get(url)
 
                 # Robust Cloudflare handling: auto-bypass -> human interaction
                 if not wait_for_cloudflare_clearance(driver, cfg.cloudflare, url):
-                    _log.error("Failed to clear Cloudflare — aborting collection for: %s", url)
+                    _log.error("Failed to clear Cloudflare — skipping page %d: %s", page_number, url)
                     return []
 
                 elements = WebDriverWait(driver, 20).until(
@@ -126,12 +131,5 @@ class URLCollector:
             except Exception as exc:
                 _log.error("Unexpected error on page %d: %s", page_number, exc)
                 return []
-
-            finally:
-                if driver is not None:
-                    try:
-                        driver.quit()
-                    except Exception:
-                        pass
 
         return []
