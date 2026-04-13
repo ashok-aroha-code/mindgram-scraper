@@ -1,0 +1,19 @@
+# Config for kireports.org
+name: "WCN 2026 Annual Meeting"
+date: "2026-04-01"
+
+listing:
+  urls:
+    - "https://www.kireports.org/issue/S2468-0249(26)X2002-2?pageStart=0"
+    - "https://www.kireports.org/issue/S2468-0249(26)X2002-2?pageStart=50"
+  item_selector: "h3 a"
+
+scraping:
+  indicator_xpath: '(//h4[@class="panel-title-text"])[1]'
+  fields:
+    title: "h1.article-title"
+    authors: ".author-group"
+    abstract: ".abstract-content"
+    citation: ".citation"
+
+output: "WCN_2026_Quick.json"

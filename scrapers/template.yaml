@@ -1,0 +1,35 @@
+# Template for creating a new scraper
+# Usage: python boilerplate_code/scraper_pipeline/run_yaml.py scrapers/my_scraper.yaml
+
+name: "My Conference 2026"
+date: "2026-04-01"
+
+# Step 1: URL Collection
+listing:
+  # All paginated listing pages
+  urls:
+    - "https://example.org/issue/123?pageStart=0"
+    - "https://example.org/issue/123?pageStart=50"
+  
+  # CSS selector for the <a> tags to individual articles
+  item_selector: "h3.title a"
+
+# Step 2: Content Scraping
+scraping:
+  # XPath of an element whose presence signals the page is fully loaded
+  indicator_xpath: "//h1" 
+
+  # Field map: field_name: "selector"
+  # Support: CSS ("h1"), XPath ("//h1"), Attributes ("img@src"), Text force ("@text")
+  fields:
+    title: "h1"
+    authors: ".authors"
+    abstract: ".abstract-body"
+
+# Optional: Chrome settings
+chrome:
+  version: 146
+  profile: "chrome_profile"
+
+# Final output filename
+output: "my_conference_data.json"

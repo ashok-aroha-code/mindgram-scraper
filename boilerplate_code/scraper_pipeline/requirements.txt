@@ -1,4 +1,5 @@
 selenium>=4.0.0
 undetected-chromedriver>=3.5.0
 beautifulsoup4>=4.9.0
-typing-extensions>=4.0.0  # for older python versions if needed
+typing-extensions>=4.0.0
+pyyaml>=6.0.0
