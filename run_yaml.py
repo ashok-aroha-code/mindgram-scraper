@@ -16,12 +16,7 @@ from pathlib import Path
 from scraper_pipeline import Pipeline, PipelineConfig
 
 from scraper_pipeline import Pipeline, PipelineConfig
-from scraper_pipeline.config import (
-    ChromeConfig,
-    CollectorConfig,
-    ScraperConfig,
-    CloudflareConfig
-)
+from scraper_pipeline.utils.logging_setup import setup_logging
 from scraper_pipeline.extractors.generic import GenericExtractor
 
 _log = logging.getLogger(__name__)
@@ -38,6 +33,11 @@ def run_from_yaml(yaml_path: str, headless: bool = False):
     # 0. Output directory based on YAML filename
     config_name = Path(yaml_path).stem
     work_dir = str(Path("Data") / config_name)
+    
+    # 1. Initialize professional logging unified across runner and pipeline
+    log_path = Path(work_dir) / "pipeline.log"
+    _setup_global_logging(log_path)
+    
     _log.info("Output folder: %s", work_dir)
 
     # Load YAML data
@@ -96,23 +96,31 @@ def run_from_yaml(yaml_path: str, headless: bool = False):
     pipeline = Pipeline(cfg, extractor=extractor)
     return pipeline.run()
 
+def _setup_global_logging(log_file: Path):
+    """Sets up the professional colored logger for the entire application."""
+    logger = setup_logging(log_file)
+    # Also redirect the root logger and script logger to use our beautiful setup
+    global _log
+    _log = logger
+    # Redirect common libraries to stay quiet
+    logging.getLogger("undetected_chromedriver").setLevel(logging.WARNING)
+    logging.getLogger("selenium").setLevel(logging.WARNING)
+
 def main():
     parser = argparse.ArgumentParser(description="Run a scraper from YAML config.")
     parser.add_argument("config", help="Path to the YAML config file")
     parser.add_argument("--headless", action="store_true", help="Run in headless mode")
     args = parser.parse_args()
 
-    # Minimal logging for the runner (production style)
-    logging.basicConfig(
-        level=logging.INFO,
-        format="[%(asctime)s] %(levelname)-8s — %(name)-15s — %(message)s",
-        datefmt="%H:%M:%S"
-    )
+    # Logging is now handled dynamically inside run_from_yaml 
+    # based on the YAML filename/Data folder.
 
     try:
         run_from_yaml(args.config, args.headless)
     except Exception as exc:
-        _log.critical("Failed to run scraper from YAML: %s", exc, exc_info=True)
+        # Fallback logging if run_from_yaml fails before setup
+        logging.basicConfig(level=logging.INFO)
+        logging.error("Failed to run scraper from YAML: %s", exc, exc_info=True)
         sys.exit(1)
 
 if __name__ == "__main__":

@@ -7,37 +7,53 @@ class ColoredFormatter(logging.Formatter):
     """Adds ANSI color codes to log levels for terminal output."""
     
     # ANSI escape sequences
-    GREY = "\x1b[38;20m"
-    CYAN = "\x1b[36;20m"
-    YELLOW = "\x1b[33;20m"
-    RED = "\x1b[31;20m"
-    BOLD_RED = "\x1b[31;1m"
+    BLUE = "\x1b[38;5;39m"
+    CYAN = "\x1b[36;1m"
+    GREEN = "\x1b[32;1m"
+    YELLOW = "\x1b[33;1m"
+    RED = "\x1b[31;1m"
+    BOLD = "\x1b[1m"
     RESET = "\x1b[0m"
 
     COLORS = {
-        logging.DEBUG: GREY,
-        logging.INFO: CYAN,
-        logging.WARNING: YELLOW,
-        logging.ERROR: RED,
-        logging.CRITICAL: BOLD_RED,
+        logging.DEBUG: (BLUE, "⚙️ "),
+        logging.INFO: (CYAN, "ℹ️ "),
+        logging.WARNING: (YELLOW, "⚠️ "),
+        logging.ERROR: (RED, "❌ "),
+        logging.CRITICAL: (RED, "🚨 "),
     }
 
     def format(self, record):
-        log_color = self.COLORS.get(record.levelno, self.RESET)
-        # Use a more readable format for levels
-        orig_levelname = record.levelname
-        record.levelname = f"{log_color}{orig_levelname:8s}{self.RESET}"
+        log_color, icon = self.COLORS.get(record.levelno, (self.RESET, ""))
         
-        # Format names to be fixed width for better alignment
-        orig_name = record.name
-        record.name = f"{orig_name[:15]:15s}"
+        # Format: [Time] ICON LEVEL Message
+        levelname = f"{log_color}{record.levelname:8s}{self.RESET}"
         
-        result = super().format(record)
+        # We simplify the message for terminal by removing the logger name if it's too noisy
+        # or we just make it subtle
+        record.message = record.getMessage()
+        if self.usesTime():
+            record.asctime = self.formatTime(record, self.datefmt)
         
-        # Restore original values to avoid side effects if other handlers use the record
-        record.levelname = orig_levelname
-        record.name = orig_name
-        return result
+        # Build the final string
+        s = f"[{record.asctime}] {icon}{log_color}{record.levelname:7s}{self.RESET} — {record.message}"
+        
+        if record.exc_info:
+            # Cache the traceback text to avoid re-generating
+            if not record.exc_text:
+                record.exc_text = self.formatException(record.exc_info)
+        
+        if record.exc_text:
+            if s[-1:] != "\n":
+                s = s + "\n"
+            s = s + record.exc_text
+        
+        if record.stack_info:
+            if s[-1:] != "\n":
+                s = s + "\n"
+            s = s + self.formatStack(record.stack_info)
+            
+        return s
 
 def setup_logging(
     log_file: Path,
