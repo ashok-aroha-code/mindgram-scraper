@@ -14,7 +14,7 @@ listing:
   allow_manual_clearance: true
   fail_on_access_block: true
 
-sample: 5
+sample: 10
 
 scraping:
   request_delay_min: 2.5
@@ -25,10 +25,10 @@ scraping:
   indicator_xpath: '//*[@id="screen-reader-main-title"]'
   fields:
     title: '//*[@id="screen-reader-main-title"]'
-    authors: '#author-group .author'
-    abstract: '#abstracts'
-    doi: 'a.doi'
-    date: '.text-xs'
+    authors: "#author-group .author"
+    abstract: "#abstracts"
+    doi: "a.doi"
+    date: ".text-xs"
 
 chrome:
   version: 147

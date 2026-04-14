@@ -102,6 +102,8 @@ class ScraperEngine:
                         break
 
                     if checkpoint.is_done(url):
+                        stats.record_skipped()
+                        progress.advance(scrape_task)
                         continue
 
                     progress.update(scrape_task, description=f"[green]Scraping: [dim]{url}")

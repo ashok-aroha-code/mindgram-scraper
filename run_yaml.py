@@ -84,6 +84,17 @@ def run_from_yaml(yaml_path: str, headless: bool = False):
         scraper=scraper,
     )
 
+    # --- Smart Resume Logic ---
+    # Skip Stage 1 (Collect) if raw_urls.json already exists
+    if cfg.resolve(cfg.raw_urls_file).exists():
+        _log.info("Found existing '%s' - Stage 1 (Collection) will be skipped.", cfg.raw_urls_file)
+        cfg.run_collect = False
+
+    # Skip Stage 2 (Dedup) if article_urls.json already exists
+    if cfg.resolve(cfg.article_urls_file).exists():
+        _log.info("Found existing '%s' - Stage 2 (Deduplication) will be skipped.", cfg.article_urls_file)
+        cfg.run_deduplicate = False
+
     extractor = GenericExtractor(scraping.get("fields", {}))
     pipeline = Pipeline(cfg, extractor=extractor)
     return pipeline.run()
