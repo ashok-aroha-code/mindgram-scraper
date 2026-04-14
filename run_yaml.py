@@ -17,6 +17,7 @@ from scraper_pipeline import Pipeline, PipelineConfig
 
 from scraper_pipeline import Pipeline, PipelineConfig
 from scraper_pipeline.utils.logging_setup import setup_logging
+from scraper_pipeline.config import ChromeConfig, CollectorConfig, ScraperConfig
 from scraper_pipeline.extractors.generic import GenericExtractor
 
 _log = logging.getLogger(__name__)
