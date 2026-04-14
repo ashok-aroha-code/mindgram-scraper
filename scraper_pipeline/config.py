@@ -32,7 +32,7 @@ class CloudflareConfig:
 
 @dataclass
 class ChromeConfig:
-    chrome_version: int = 135
+    chrome_version: int = 147
     headless: bool = False
     user_agents: List[str] = field(default_factory=list)  # Uses _STEALTH_USER_AGENTS in driver.py when empty
     user_data_dir: Optional[str] = "chrome_profile"  # Enable persistent sessions

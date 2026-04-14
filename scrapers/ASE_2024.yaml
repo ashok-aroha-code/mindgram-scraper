@@ -41,7 +41,7 @@ scraping:
 
 # Optional: Chrome settings
 chrome:
-  version: 135
+  version: 147
   user_data_dir: "chrome_profile_ashok"  # Local copy of Ashok's Chrome profile
   # profile_name not needed — user_data_dir already is the profile folder
 
