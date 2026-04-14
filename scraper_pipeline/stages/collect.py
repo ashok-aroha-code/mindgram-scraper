@@ -11,6 +11,7 @@ Output: raw_urls.json              ({"page_1": [...], "page_2": [...], ...})
 from __future__ import annotations
 
 import logging
+import random
 import time
 from collections import OrderedDict
 from pathlib import Path
