@@ -163,12 +163,13 @@ def create_driver(cfg: ChromeConfig) -> uc.Chrome:
             use_subprocess=True
         )
         
-        # Force window to be visible and on top
-        driver.maximize_window()
+        # Give the browser a moment to register its window handle before interaction
+        time.sleep(1)
         try:
+            driver.maximize_window()
             driver.execute_script("window.focus();")
-        except Exception:
-            pass
+        except Exception as win_exc:
+            _log.debug("Non-critical: Could not maximize or focus window: %s", win_exc)
             
     except Exception as exc:
         msg = str(exc).lower()
