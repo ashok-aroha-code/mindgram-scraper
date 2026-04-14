@@ -23,10 +23,12 @@ scraping:
   indicator_xpath: '//*[@id="screen-reader-main-title"]'
   fields:
     title: '//*[@id="screen-reader-main-title"]'
-    authors: "#author-group .author"
+    author_info: "#author-group .author"
     abstract: "#abstracts"
     doi: "a.doi"
+  metadata_fields:
     date: ".text-xs"
+    abs_type: "//span[contains(@class,'article-type')]"
 
 chrome:
   version: 147

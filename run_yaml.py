@@ -95,7 +95,10 @@ def run_from_yaml(yaml_path: str, headless: bool = False):
         _log.info("Found existing '%s' - Stage 2 (Deduplication) will be skipped.", cfg.article_urls_file)
         cfg.run_deduplicate = False
 
-    extractor = GenericExtractor(scraping.get("fields", {}))
+    extractor = GenericExtractor(
+        field_map=scraping.get("fields", {}),
+        metadata_map=scraping.get("metadata_fields", {})
+    )
     pipeline = Pipeline(cfg, extractor=extractor)
     return pipeline.run()
 

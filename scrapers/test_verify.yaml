@@ -1,0 +1,19 @@
+# Test YAML for verification
+name: "Test Scraper"
+listing:
+  urls: ["https://www.sciencedirect.com/journal/journal-of-the-american-society-of-echocardiography/vol/37/issue/1"]
+  item_selector: "a.article-content-title"
+scraping:
+  sample: 1
+  fields:
+    title: '//*[@id="screen-reader-main-title"]'
+    author_info: "#author-group .author"
+    abstract: "#abstracts"
+    doi: "a.doi"
+  metadata_fields:
+    date: ".text-xs"
+    abs_type: "//span[contains(@class,'article-type')]"
+output: "test_output.json"
+chrome:
+  version: 147
+  user_data_dir: "chrome_profile_ashok"

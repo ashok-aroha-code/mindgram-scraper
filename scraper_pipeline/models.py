@@ -9,7 +9,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any, Dict
 
 _log = logging.getLogger(__name__)
 
@@ -201,3 +201,57 @@ class PipelineResult:
             self.scraped_skipped,
             self.output_file,
         )
+
+# ---------------------------------------------------------------------------
+# Data Record Standard
+# ---------------------------------------------------------------------------
+
+def create_empty_record() -> Dict[str, Any]:
+    """Create a dictionary with the mandatory fields and default values."""
+    return {
+        "link": "",
+        "title": "",
+        "doi": "",
+        "number": "",
+        "author_info": "",
+        "abstract": "-",
+        "abstract_html": "",
+        "abstract_markdown": "",
+        "abstract_metadata": {
+            "abs_type": "",
+            "session_link": "",
+            "session_name": "",
+            "session_type": "",
+            "session_moderators": "",
+            "date": "",
+            "time": "",
+            "location": ""
+        }
+    }
+
+def finalize_record(raw_record: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Ensures the record matches the requested structure, applying defaults
+    for mandatory fields and nest metadata correctly.
+    """
+    record = create_empty_record()
+    
+    # Core fields
+    for field in ["link", "title", "doi", "number", "author_info", "abstract_html", "abstract_markdown"]:
+        if field in raw_record:
+            record[field] = raw_record[field]
+    
+    # Special default for abstract
+    if "abstract" in raw_record and raw_record["abstract"]:
+        record["abstract"] = raw_record["abstract"]
+    
+    # Metadata fields
+    # We move any field not in the top-level core to abstract_metadata
+    core_keys = set(record.keys())
+    for key, value in raw_record.items():
+        if key not in core_keys and key != "abstract_metadata":
+            record["abstract_metadata"][key] = value
+        elif key == "abstract_metadata" and isinstance(value, dict):
+            record["abstract_metadata"].update(value)
+            
+    return record
