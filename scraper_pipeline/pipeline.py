@@ -40,6 +40,7 @@ from scraper_pipeline.utils.logging_setup import setup_logging
 
 from rich.console import Console
 from rich.table import Table
+from rich.markup import escape
 
 _log = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ class Pipeline:
         work.mkdir(parents=True, exist_ok=True)
 
         _log.info("=" * 60)
-        _log.info("🚀 PIPELINE STARTING | work_dir=%s", work)
+        _log.info("PIPELINE STARTING | work_dir=%s", work)
         _log.info("=" * 60)
         _log.info(
             "Stages: [Collect: %s] [Dedup: %s] [Scrape: %s]",
@@ -89,7 +90,7 @@ class Pipeline:
 
             if cfg.run_collect:
                 _log.info("-" * 60)
-                _log.info("📍 STAGE 1: URL Collection")
+                _log.info("STAGE 1: URL Collection")
                 _log.info("-" * 60)
                 raw = URLCollector(cfg.collector).run(raw_urls_path, driver=driver)
                 result.urls_collected = sum(len(v) for v in raw.values())
@@ -103,7 +104,7 @@ class Pipeline:
 
             if cfg.run_deduplicate:
                 _log.info("-" * 60)
-                _log.info("🧹 STAGE 2: Deduplication")
+                _log.info("STAGE 2: Deduplication")
                 _log.info("-" * 60)
                 urls = URLDeduplicator.run(raw_urls_path, article_urls_path)
                 result.urls_after_dedup = len(urls)
@@ -117,7 +118,7 @@ class Pipeline:
 
             if cfg.run_scrape:
                 _log.info("-" * 60)
-                _log.info("🔎 STAGE 3: Scraping (%d URLs)", len(urls))
+                _log.info("STAGE 3: Scraping (%d URLs)", len(urls))
                 _log.info("-" * 60)
                 stats = ScraperEngine(cfg.scraper, self._extractor).run(
                     urls=urls,
@@ -139,7 +140,7 @@ class Pipeline:
     def _display_summary_table(self, result: PipelineResult) -> None:
         """Render a beautiful Rich table summarizing the pipeline's work."""
         console = Console()
-        table = Table(title="🚀 Pipeline Results Summary", show_header=True, header_style="bold cyan", border_style="dim")
+        table = Table(title="Pipeline Results Summary", show_header=True, header_style="bold cyan", border_style="dim")
         
         table.add_column("Stage / Metric", style="bold")
         table.add_column("Value", justify="right")
@@ -149,14 +150,14 @@ class Pipeline:
         table.add_row(
             "URLs Collected", 
             str(result.urls_collected),
-            "✅" if result.urls_collected > 0 else "❌"
+            "[green]Done[/green]" if result.urls_collected > 0 else "[red]Empty[/red]"
         )
         
         # Stage 2
         table.add_row(
             "URLs After Dedup", 
             str(result.urls_after_dedup),
-            "🧹"
+            "[blue]Deduplicated[/blue]"
         )
 
         table.add_section()
@@ -165,26 +166,30 @@ class Pipeline:
         table.add_row(
             "Scraped Success", 
             f"[green]{result.scraped_success}[/green]", 
-            "✨"
+            "+"
         )
         table.add_row(
             "Scraped Partial", 
             f"[yellow]{result.scraped_partial}[/yellow]", 
-            "⚠️"
+            "!"
         )
         table.add_row(
             "Scraped Failed", 
             f"[red]{result.scraped_failed}[/red]", 
-            "🛑"
+            "x"
         )
         table.add_row(
             "Scraped Skipped", 
             f"[dim]{result.scraped_skipped}[/dim]", 
-            "⏩"
+            ">"
         )
 
         console.print("\n")
         console.print(table)
         
         if result.output_file:
-            console.print(f"\n[bold green]Final Data:[/bold green] [link file:///{Path(result.output_file).absolute()}]{result.output_file}[/link]\n")
+            # Use as_uri() for the link and escape() for the displayed text to avoid Rich markup errors
+            path_obj = Path(result.output_file).absolute()
+            file_uri = path_obj.as_uri()
+            display_path = escape(result.output_file)
+            console.print(f"\n[bold green]Final Data:[/bold green] [link={file_uri}]{display_path}[/link]\n")
