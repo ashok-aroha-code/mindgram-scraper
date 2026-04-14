@@ -80,6 +80,9 @@ def run_from_yaml(yaml_path: str, headless: bool = False):
     # 3. Scraper Config
     scraper = ScraperConfig(
         page_load_indicator_xpath=scraping.get("indicator_xpath", "//h1"),
+        request_delay_min=scraping.get("request_delay_min", 2.0),
+        request_delay_max=scraping.get("request_delay_max", 5.0),
+        post_nav_jitter=scraping.get("post_nav_jitter", 3.0),
         sample_limit=data.get("sample"),
         chrome=chrome
     )

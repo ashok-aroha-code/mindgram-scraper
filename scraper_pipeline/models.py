@@ -186,7 +186,6 @@ class PipelineResult:
     scraped_partial: int = 0
     scraped_failed: int = 0
     scraped_skipped: int = 0
-    scraped_skipped: int = 0
     output_file: str = ""
 
     def log(self) -> None:

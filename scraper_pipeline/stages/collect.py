@@ -82,7 +82,8 @@ class URLCollector:
                     progress.advance(collect_task)
                     
                     if idx < len(queue):
-                        time.sleep(cfg.inter_page_delay)
+                        delay = random.uniform(cfg.inter_page_delay_min, cfg.inter_page_delay_max)
+                        time.sleep(delay)
 
                 # 2. Continuous mode (if template provided but no end_page)
                 if cfg.url_template and cfg.end_page is None:
@@ -103,7 +104,7 @@ class URLCollector:
                         
                         results[f"page_{idx_offset}"] = urls
                         current_page += cfg.page_increment
-                        time.sleep(cfg.inter_page_delay)
+                        time.sleep(random.uniform(cfg.inter_page_delay_min, cfg.inter_page_delay_max))
 
         finally:
             if own_driver and driver is not None:
@@ -139,8 +140,17 @@ class URLCollector:
                     _log.error("Failed to clear bot challenge — skipping page %d: %s", page_number, url)
                     return []
 
-                # Small human-like jitter
-                time.sleep(random.uniform(2.0, 5.0))
+                # Post-clearance jitter — simulate reading before scraping
+                time.sleep(random.uniform(3.0, 6.0))
+
+                # Scroll the page a bit before detecting elements (human behaviour)
+                try:
+                    driver.execute_script("window.scrollBy({top: 300, left: 0, behavior: 'smooth'});")
+                    time.sleep(random.uniform(0.8, 1.5))
+                    driver.execute_script("window.scrollBy({top: -100, left: 0, behavior: 'smooth'});")
+                    time.sleep(random.uniform(0.4, 0.8))
+                except Exception:
+                    pass
 
                 elements = WebDriverWait(driver, 20).until(
                     EC.presence_of_all_elements_located(

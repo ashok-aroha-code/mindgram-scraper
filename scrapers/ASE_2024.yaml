@@ -23,10 +23,10 @@ sample: 5
 
 # Step 2: Content Scraping
 scraping:
-  # Stealth Timing (in SECONDS)
-  request_delay_min: 2.0
-  request_delay_max: 5.0
-  post_nav_jitter: 1.5
+  # Stealth Timing (in SECONDS) — realistic human-like delays
+  request_delay_min: 2.5
+  request_delay_max: 6.0
+  post_nav_jitter: 3.0
 
   # XPath of an element whose presence signals the page is fully loaded
   indicator_xpath: '//*[@id="screen-reader-main-title"]' 
@@ -41,7 +41,7 @@ scraping:
 
 # Optional: Chrome settings
 chrome:
-  version: 147
+  version: 135
   user_data_dir: "chrome_profile_ashok"  # Local copy of Ashok's Chrome profile
   # profile_name not needed — user_data_dir already is the profile folder
 

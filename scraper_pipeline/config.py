@@ -15,13 +15,6 @@ from typing import List, Optional
 # Shared defaults
 # ---------------------------------------------------------------------------
 
-_DEFAULT_USER_AGENTS: List[str] = [
-    # Chrome 147 — matches actual installed version (detected via registry)
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.7727.56 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.7727.67 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.7727.88 Safari/537.36",
-]
-
 
 @dataclass
 class CloudflareConfig:
@@ -39,9 +32,9 @@ class CloudflareConfig:
 
 @dataclass
 class ChromeConfig:
-    chrome_version: int = 147
+    chrome_version: int = 135
     headless: bool = False
-    user_agents: List[str] = field(default_factory=lambda: list(_DEFAULT_USER_AGENTS))
+    user_agents: List[str] = field(default_factory=list)  # Uses _STEALTH_USER_AGENTS in driver.py when empty
     user_data_dir: Optional[str] = "chrome_profile"  # Enable persistent sessions
     profile_name: Optional[str] = None  # Use specific sub-profile directory
 
@@ -73,9 +66,10 @@ class CollectorConfig:
     # ✏️  CSS selector that matches the <a> tags for individual articles
     css_selector: str = "h3 a"
 
-    page_load_wait: int = 10  # seconds to sleep after driver.get()
-    inter_page_delay: int = 3  # seconds between pages
-    first_page_wait: int = 30  # seconds for manual CAPTCHA on page 1
+    page_load_wait: int = 10         # seconds to sleep after driver.get()
+    inter_page_delay_min: float = 4.0  # minimum seconds between listing pages
+    inter_page_delay_max: float = 9.0  # maximum seconds between listing pages
+    first_page_wait: int = 30        # seconds for manual CAPTCHA on page 1
     max_retries: int = 3
     chrome: ChromeConfig = field(default_factory=ChromeConfig)
     cloudflare: CloudflareConfig = field(default_factory=CloudflareConfig)
@@ -93,11 +87,11 @@ class ScraperConfig:
     """
 
     # --- Timing ---------------------------------------------------------------
-    request_delay_min: float = 0.5
-    request_delay_max: float = 1.5
+    request_delay_min: float = 2.0
+    request_delay_max: float = 5.0
     first_page_wait: int = 30
-    page_load_timeout: int = 20
-    post_nav_jitter: float = 1.5
+    page_load_timeout: int = 25
+    post_nav_jitter: float = 3.0
 
     # --- Reliability ----------------------------------------------------------
     max_retries: int = 3
