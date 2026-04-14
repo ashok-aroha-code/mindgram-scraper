@@ -218,5 +218,6 @@ __marimo__/
 *.json
 
 chrome_profile
+chrome_profile_ashok
 
 *.jsonl

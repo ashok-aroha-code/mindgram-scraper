@@ -23,10 +23,10 @@ sample: 5
 
 # Step 2: Content Scraping
 scraping:
-  # Stealth Timing: Higher delays look more like a human reading
-  request_delay_min: 5.0
-  request_delay_max: 12.0
-  post_nav_jitter: 3.5
+  # Stealth Timing (in SECONDS)
+  request_delay_min: 2.0
+  request_delay_max: 5.0
+  post_nav_jitter: 1.5
 
   # XPath of an element whose presence signals the page is fully loaded
   indicator_xpath: '//*[@id="screen-reader-main-title"]' 
@@ -41,9 +41,9 @@ scraping:
 
 # Optional: Chrome settings
 chrome:
-  version: 146
-  user_data_dir: "%LOCALAPPDATA%\\Google\\Chrome\\User Data"
-  profile_name: "Profile 1"  # "Ashok" profile
+  version: 147
+  user_data_dir: "chrome_profile_ashok"  # Local copy of Ashok's Chrome profile
+  # profile_name not needed — user_data_dir already is the profile folder
 
 # Final output filename
 output: "ASE_2024_data.json"

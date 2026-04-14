@@ -87,7 +87,9 @@ def setup_logging(
     )
     file_handler.setFormatter(file_formatter)
 
-    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler = logging.StreamHandler(
+        open(sys.stdout.fileno(), mode='w', encoding='utf-8', buffering=1, closefd=False)
+    )
     stream_handler.setFormatter(console_formatter)
 
     logger = logging.getLogger("scraper_pipeline")

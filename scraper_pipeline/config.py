@@ -39,7 +39,7 @@ class CloudflareConfig:
 
 @dataclass
 class ChromeConfig:
-    chrome_version: int = 146
+    chrome_version: int = 147
     headless: bool = False
     user_agents: List[str] = field(default_factory=lambda: list(_DEFAULT_USER_AGENTS))
     user_data_dir: Optional[str] = "chrome_profile"  # Enable persistent sessions
