@@ -34,6 +34,7 @@ from scraper_pipeline.models import PipelineResult
 from scraper_pipeline.stages.collect import URLCollector
 from scraper_pipeline.stages.deduplicate import URLDeduplicator
 from scraper_pipeline.stages.scrape import ScraperEngine
+from scraper_pipeline.utils.driver import managed_driver
 from scraper_pipeline.utils.io import read_json
 from scraper_pipeline.utils.logging_setup import setup_logging
 
@@ -81,45 +82,49 @@ class Pipeline:
 
         result = PipelineResult()
 
-        # --- Stage 1: Collect ------------------------------------------------
-        raw_urls_path = cfg.resolve(cfg.raw_urls_file)
+        # Manage a single driver session for the entire pipeline
+        # (This keeps the browser open so bot-clearance persists)
+        with managed_driver(cfg.collector.chrome) as driver:
+            # --- Stage 1: Collect ------------------------------------------------
+            raw_urls_path = cfg.resolve(cfg.raw_urls_file)
 
-        if cfg.run_collect:
-            _log.info("--- Stage 1: URL collection ---")
-            raw = URLCollector(cfg.collector).run(raw_urls_path)
-            result.urls_collected = sum(len(v) for v in raw.values())
-        else:
-            if raw_urls_path.exists():
-                raw = read_json(raw_urls_path)
-                result.urls_collected = sum(len(v) if isinstance(v, list) else 0 for v in raw.values())
+            if cfg.run_collect:
+                _log.info("--- Stage 1: URL collection ---")
+                raw = URLCollector(cfg.collector).run(raw_urls_path, driver=driver)
+                result.urls_collected = sum(len(v) for v in raw.values())
+            else:
+                if raw_urls_path.exists():
+                    raw = read_json(raw_urls_path)
+                    result.urls_collected = sum(len(v) if isinstance(v, list) else 0 for v in raw.values())
 
-        # --- Stage 2: Deduplicate --------------------------------------------
-        article_urls_path = cfg.resolve(cfg.article_urls_file)
+            # --- Stage 2: Deduplicate --------------------------------------------
+            article_urls_path = cfg.resolve(cfg.article_urls_file)
 
-        if cfg.run_deduplicate:
-            _log.info("--- Stage 2: Deduplication ---")
-            urls = URLDeduplicator.run(raw_urls_path, article_urls_path)
-            result.urls_after_dedup = len(urls)
-        else:
-            if article_urls_path.exists():
-                urls = read_json(article_urls_path)
+            if cfg.run_deduplicate:
+                _log.info("--- Stage 2: Deduplication ---")
+                urls = URLDeduplicator.run(raw_urls_path, article_urls_path)
                 result.urls_after_dedup = len(urls)
+            else:
+                if article_urls_path.exists():
+                    urls = read_json(article_urls_path)
+                    result.urls_after_dedup = len(urls)
 
-        # --- Stage 3: Scrape -------------------------------------------------
-        scraped_path = cfg.resolve(cfg.scraped_data_file)
+            # --- Stage 3: Scrape -------------------------------------------------
+            scraped_path = cfg.resolve(cfg.scraped_data_file)
 
-        if cfg.run_scrape:
-            _log.info("--- Stage 3: Scraping (%d URLs) ---", len(urls))
-            stats = ScraperEngine(cfg.scraper, self._extractor).run(
-                urls=urls,
-                output_path=scraped_path,
-                checkpoint_path=cfg.resolve(cfg.checkpoint_file),
-            )
-            result.scraped_success = stats.success
-            result.scraped_partial = stats.partial
-            result.scraped_failed = stats.failed
-            result.scraped_skipped = stats.skipped
-            result.output_file = str(scraped_path)
+            if cfg.run_scrape:
+                _log.info("--- Stage 3: Scraping (%d URLs) ---", len(urls))
+                stats = ScraperEngine(cfg.scraper, self._extractor).run(
+                    urls=urls,
+                    output_path=scraped_path,
+                    checkpoint_path=cfg.resolve(cfg.checkpoint_file),
+                    driver=driver,
+                )
+                result.scraped_success = stats.success
+                result.scraped_partial = stats.partial
+                result.scraped_failed = stats.failed
+                result.scraped_skipped = stats.skipped
+                result.output_file = str(scraped_path)
 
         result.log()
         return result

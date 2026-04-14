@@ -65,6 +65,7 @@ class ScraperEngine:
         urls: list[str],
         output_path: Path,
         checkpoint_path: Path,
+        driver: Optional[uc.Chrome] = None,
     ) -> StatsTracker:
         """
         Scrape all URLs and write results to `output_path`.
@@ -100,12 +101,15 @@ class ScraperEngine:
         signal.signal(signal.SIGTERM, _on_signal)
 
         # --- Main loop -------------------------------------------------------
-        driver: Optional[object] = None
+        own_driver = False
+        if driver is None:
+            driver = create_driver(cfg.chrome)
+            own_driver = True
+
         driver_restarts = 0
         is_first_url = True
 
         try:
-            driver = create_driver(cfg.chrome)
 
             for url in urls:
                 if shutdown.is_set():
@@ -236,7 +240,7 @@ class ScraperEngine:
                 time.sleep(random.uniform(cfg.request_delay_min, cfg.request_delay_max))
 
         finally:
-            if driver is not None:
+            if own_driver and driver is not None:
                 try:
                     driver.quit()
                 except Exception:

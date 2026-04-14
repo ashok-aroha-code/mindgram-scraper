@@ -41,13 +41,18 @@ class URLCollector:
     def __init__(self, cfg: CollectorConfig) -> None:
         self._cfg = cfg
 
-    def run(self, output_path: Path) -> dict[str, list[str]]:
+    def run(self, output_path: Path, driver: Optional[uc.Chrome] = None) -> dict[str, list[str]]:
         """
         Collect URLs from listing pages using dynamic pagination if configured.
         """
         cfg = self._cfg
         results: dict[str, list[str]] = OrderedDict()
-        driver = None
+        
+        # Decide if we own the driver or if it's external
+        own_driver = False
+        if driver is None:
+            driver = create_driver(cfg.chrome)
+            own_driver = True
 
         # Build initial queue from static URLs or dynamic template
         queue: list[str] = list(cfg.page_urls)
@@ -58,8 +63,6 @@ class URLCollector:
                 queue.append(cfg.url_template.format(page=p))
         
         try:
-            driver = create_driver(cfg.chrome)
-
             # 1. Process the queued URLs
             for idx, url in enumerate(queue, 1):
                 _log.info("Collecting page %d/%d: %s", idx, len(queue), url)
@@ -94,7 +97,7 @@ class URLCollector:
                     time.sleep(cfg.inter_page_delay)
 
         finally:
-            if driver is not None:
+            if own_driver and driver is not None:
                 try:
                     driver.quit()
                     _log.debug("Collector browser closed.")
