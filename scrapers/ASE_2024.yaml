@@ -4,34 +4,25 @@
 name: "Journal of the American Society of Echocardiography (ASE) 2024"
 date: "2024-01-01"
 
-# Step 1: URL Collection
 listing:
-  # Dynamic Pagination Mode
   url_template: "https://www.sciencedirect.com/journal/journal-of-the-american-society-of-echocardiography/vol/37/issue/{page}"
   start_page: 1
-  end_page: 12        # Set to null to scrape until no more records are found
+  end_page: 12
   page_increment: 1
-
-  # All paginated listing pages (Optional: used only if url_template is missing)
   urls: []
-  
-  # CSS selector for the <a> tags to individual articles
   item_selector: "a.article-content-title"
+  allow_manual_clearance: true
+  fail_on_access_block: true
 
-# Testing Mode: Limit the total number of items scraped (remove when ready for full run)
 sample: 5
 
-# Step 2: Content Scraping
 scraping:
-  # Stealth Timing (in SECONDS) — realistic human-like delays
   request_delay_min: 2.5
   request_delay_max: 6.0
   post_nav_jitter: 3.0
-
-  # XPath of an element whose presence signals the page is fully loaded
-  indicator_xpath: '//*[@id="screen-reader-main-title"]' 
-
-  # Field map: field_name: "selector"
+  allow_manual_clearance: true
+  fail_on_access_block: true
+  indicator_xpath: '//*[@id="screen-reader-main-title"]'
   fields:
     title: '//*[@id="screen-reader-main-title"]'
     authors: '#author-group .author'
@@ -39,11 +30,8 @@ scraping:
     doi: 'a.doi'
     date: '.text-xs'
 
-# Optional: Chrome settings
 chrome:
   version: 147
-  user_data_dir: "chrome_profile_ashok"  # Local copy of Ashok's Chrome profile
-  # profile_name not needed — user_data_dir already is the profile folder
+  user_data_dir: "chrome_profile_ashok"
 
-# Final output filename
 output: "ASE_2024_data.json"
