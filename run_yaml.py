@@ -35,8 +35,14 @@ def get_work_dir(name: str) -> str:
     return "".join(c if c.isalnum() else "_" for c in name).strip("_")
 
 def run_from_yaml(yaml_path: str, headless: bool = False):
+    # 0. Output directory based on YAML filename
+    config_name = Path(yaml_path).stem
+    work_dir = str(Path("Data") / config_name)
+    _log.info("Output folder: %s", work_dir)
+
+    # Load YAML data
     data = load_yaml(yaml_path)
-    
+
     # Extract sections from YAML
     name = data.get("name", "One-Time Scraper")
     listing = data.get("listing", {})
@@ -71,9 +77,8 @@ def run_from_yaml(yaml_path: str, headless: bool = False):
         chrome=chrome
     )
 
-    # 4. Folder organization
-    work_dir = get_work_dir(name)
-    _log.info("Output folder: %s", work_dir)
+    # 4. Folder organization (Simplified)
+    # work_dir is now determined at the start of the function
 
     # 5. Full Pipeline Config
     cfg = PipelineConfig(
