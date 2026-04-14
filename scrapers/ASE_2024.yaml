@@ -14,8 +14,6 @@ listing:
   allow_manual_clearance: true
   fail_on_access_block: true
 
-sample: 10
-
 scraping:
   request_delay_min: 2.5
   request_delay_max: 6.0

@@ -80,6 +80,11 @@ class ScraperEngine:
         driver_restarts = 0
         is_first_url = True
 
+        # Pre-calculate resume count
+        completed_urls = [u for u in urls if checkpoint.is_done(u)]
+        if completed_urls:
+            _log.info("Found existing checkpoint: %d/%d URLs already completed. Resuming...", len(completed_urls), len(urls))
+
         try:
             with Progress(
                 SpinnerColumn(),
@@ -112,7 +117,7 @@ class ScraperEngine:
 
                     for attempt in range(1, cfg.max_retries + 1):
                         try:
-                            self._navigate_and_wait(driver, url, is_first_url)
+                            self._navigate_and_wait(driver, url, is_first_url, shutdown_event=shutdown)
                             is_first_url = False
 
                             record, missing = self._extractor.extract(driver)
@@ -184,6 +189,11 @@ class ScraperEngine:
 
                     checkpoint.mark_done(url)
                     progress.advance(scrape_task)
+
+                    # Periodic Merge: Update the main JSON every 5 successful scrapes
+                    if stats.processed > 0 and stats.processed % 5 == 0:
+                        jsonl_to_json(output_jsonl, output_path)
+
                     time.sleep(random.uniform(cfg.request_delay_min, cfg.request_delay_max))
         finally:
             if own_driver and driver is not None:
@@ -207,12 +217,12 @@ class ScraperEngine:
 
         return stats
 
-    def _navigate_and_wait(self, driver: object, url: str, is_first: bool) -> None:
+    def _navigate_and_wait(self, driver: uc.Chrome, url: str, is_first: bool, shutdown_event: threading.Event) -> None:
         """Load a URL, require legitimate access, then wait for the target element."""
         cfg = self._cfg
         driver.get(url)
 
-        if not wait_for_bot_clearance(driver, cfg.cloudflare, url):
+        if not wait_for_bot_clearance(driver, cfg.cloudflare, url, shutdown_event=shutdown_event):
             raise AccessBlockedError(f"Access challenge or block page detected for {url}")
 
         if not is_first:

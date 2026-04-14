@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from selenium.common.exceptions import WebDriverException
 
 if TYPE_CHECKING:
+    import threading
     import undetected_chromedriver as uc
     from scraper_pipeline.config import CloudflareConfig
 
@@ -88,7 +89,9 @@ def is_bot_challenge_active(driver: uc.Chrome) -> bool:
         return False
 
 
-def wait_for_bot_clearance(driver: uc.Chrome, cfg: CloudflareConfig, url: str) -> bool:
+def wait_for_bot_clearance(
+    driver: uc.Chrome, cfg: CloudflareConfig, url: str, shutdown_event: Optional[threading.Event] = None
+) -> bool:
     """
     Wait for a block/challenge page to clear.
 
@@ -100,6 +103,10 @@ def wait_for_bot_clearance(driver: uc.Chrome, cfg: CloudflareConfig, url: str) -
     human_prompted = False
 
     while (time.monotonic() - start_time) < cfg.total_timeout_seconds:
+        if shutdown_event and shutdown_event.is_set():
+            _log.debug("Shutdown requested while waiting for bot clearance.")
+            return False
+
         if not is_bot_challenge_active(driver):
             if human_prompted:
                 _log.info("Access challenge cleared. Resuming.")
