@@ -17,13 +17,18 @@ if TYPE_CHECKING:
 _log = logging.getLogger(__name__)
 
 
-def is_cloudflare_active(driver: uc.Chrome) -> bool:
+def is_bot_challenge_active(driver: uc.Chrome) -> bool:
     """
-    Check if Cloudflare is currently blocking the target page with a challenge.
+    Check if Cloudflare or a specific site block (like ScienceDirect) is active.
     """
     try:
         title = driver.title.lower()
-        if "just a moment" in title or "cloudflare" in title or "attention required" in title:
+        if any(m in title for m in ["just a moment", "cloudflare", "attention required"]):
+            return True
+
+        # ScienceDirect specific block text
+        page_text = driver.find_element("tag name", "body").text.lower()
+        if "there was a problem providing the content you requested" in page_text:
             return True
 
         # Check for specific Cloudflare elements
@@ -42,41 +47,29 @@ def is_cloudflare_active(driver: uc.Chrome) -> bool:
         return False
 
 
-def wait_for_cloudflare_clearance(
+def wait_for_bot_clearance(
     driver: uc.Chrome, cfg: CloudflareConfig, url: str
 ) -> bool:
     """
-    Polled wait for Cloudflare challenge to be cleared.
-    1. Wait `auto_wait_seconds` to let UD driver solve it automatically.
-    2. If still active, log a warning and wait up to `total_timeout_seconds`.
+    Polled wait for bot challenge/block to be cleared.
     """
     start_time = time.monotonic()
-    last_detected = 0.0
     human_prompted = False
 
     while (time.monotonic() - start_time) < cfg.total_timeout_seconds:
-        if not is_cloudflare_active(driver):
+        if not is_bot_challenge_active(driver):
             if human_prompted:
-                _log.info("Cloudflare challenge cleared! Resuming...")
+                _log.info("Challenge cleared! Resuming...")
             return True
 
         elapsed = time.monotonic() - start_time
 
-        # If we've passed the auto-wait threshold and haven't prompted the human yet
         if elapsed > cfg.auto_wait_seconds and not human_prompted:
-            _log.warning(
-                "!!! CLOUDFLARE DETECTED on %s !!!", url
-            )
-            _log.warning(
-                "Automatic bypass failed. PLEASE SOLVE THE CHALLENGE MANUALLY in the browser window."
-            )
-            _log.warning(
-                "The scraper will wait up to %d more seconds for you...",
-                int(cfg.total_timeout_seconds - elapsed),
-            )
+            _log.warning("!!! BOT CHALLENGE / BLOCK DETECTED on %s !!!", url)
+            _log.warning("Please solve the challenge or clear the 'Problem' page manually.")
             human_prompted = True
 
         time.sleep(2.0)
 
-    _log.error("Cloudflare clearance timed out after %ds for %s", cfg.total_timeout_seconds, url)
+    _log.error("Clearance timed out for %s", url)
     return False

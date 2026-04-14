@@ -24,7 +24,7 @@ from selenium.common.exceptions import TimeoutException
 from scraper_pipeline.config import CollectorConfig
 from scraper_pipeline.utils.driver import create_driver
 from scraper_pipeline.utils.io import write_json
-from scraper_pipeline.utils.cloudflare import wait_for_cloudflare_clearance
+from scraper_pipeline.utils.cloudflare import wait_for_bot_clearance
 
 _log = logging.getLogger(__name__)
 
@@ -121,10 +121,13 @@ class URLCollector:
             try:
                 driver.get(url)
 
-                # Robust Cloudflare handling: auto-bypass -> human interaction
-                if not wait_for_cloudflare_clearance(driver, cfg.cloudflare, url):
-                    _log.error("Failed to clear Cloudflare — skipping page %d: %s", page_number, url)
+                # Robust bot/ScienceDirect handling: auto-bypass -> human interaction
+                if not wait_for_bot_clearance(driver, cfg.cloudflare, url):
+                    _log.error("Failed to clear bot challenge — skipping page %d: %s", page_number, url)
                     return []
+
+                # Small human-like jitter
+                time.sleep(random.uniform(2.0, 5.0))
 
                 elements = WebDriverWait(driver, 20).until(
                     EC.presence_of_all_elements_located(
