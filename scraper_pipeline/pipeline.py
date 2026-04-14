@@ -38,6 +38,9 @@ from scraper_pipeline.utils.driver import managed_driver
 from scraper_pipeline.utils.io import read_json
 from scraper_pipeline.utils.logging_setup import setup_logging
 
+from rich.console import Console
+from rich.table import Table
+
 _log = logging.getLogger(__name__)
 
 
@@ -129,6 +132,59 @@ class Pipeline:
                 result.output_file = str(scraped_path)
 
         _log.info("=" * 60)
-        result.log()
+        self._display_summary_table(result)
         _log.info("=" * 60)
         return result
+
+    def _display_summary_table(self, result: PipelineResult) -> None:
+        """Render a beautiful Rich table summarizing the pipeline's work."""
+        console = Console()
+        table = Table(title="🚀 Pipeline Results Summary", show_header=True, header_style="bold cyan", border_style="dim")
+        
+        table.add_column("Stage / Metric", style="bold")
+        table.add_column("Value", justify="right")
+        table.add_column("Status", justify="center")
+
+        # Stage 1
+        table.add_row(
+            "URLs Collected", 
+            str(result.urls_collected),
+            "✅" if result.urls_collected > 0 else "❌"
+        )
+        
+        # Stage 2
+        table.add_row(
+            "URLs After Dedup", 
+            str(result.urls_after_dedup),
+            "🧹"
+        )
+
+        table.add_section()
+
+        # Stage 3
+        table.add_row(
+            "Scraped Success", 
+            f"[green]{result.scraped_success}[/green]", 
+            "✨"
+        )
+        table.add_row(
+            "Scraped Partial", 
+            f"[yellow]{result.scraped_partial}[/yellow]", 
+            "⚠️"
+        )
+        table.add_row(
+            "Scraped Failed", 
+            f"[red]{result.scraped_failed}[/red]", 
+            "🛑"
+        )
+        table.add_row(
+            "Scraped Skipped", 
+            f"[dim]{result.scraped_skipped}[/dim]", 
+            "⏩"
+        )
+
+        console.print("\n")
+        console.print(table)
+        
+        if result.output_file:
+            console.print(f"\n[bold green]Final Data:[/bold green] [link file:///{Path(result.output_file).absolute()}]{result.output_file}[/link]\n")

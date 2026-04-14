@@ -27,6 +27,8 @@ from scraper_pipeline.utils.driver import create_driver
 from scraper_pipeline.utils.io import write_json
 from scraper_pipeline.utils.cloudflare import wait_for_bot_clearance
 
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+
 _log = logging.getLogger(__name__)
 
 
@@ -63,38 +65,45 @@ class URLCollector:
                 queue.append(cfg.url_template.format(page=p))
         
         try:
-            # 1. Process the queued URLs
-            for idx, url in enumerate(queue, 1):
-                _log.info("Collecting page %d/%d: %s", idx, len(queue), url)
-                urls = self._collect_one_page(driver, url, idx)
-                results[f"page_{idx}"] = urls
-                _log.info("  → %d URLs collected", len(urls))
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TaskProgressColumn(),
+                expand=True
+            ) as progress:
+                # 1. Process the queued URLs
+                collect_task = progress.add_task("[cyan]Collecting URLs...", total=len(queue))
                 
-                if idx < len(queue):
-                    time.sleep(cfg.inter_page_delay)
+                for idx, url in enumerate(queue, 1):
+                    progress.update(collect_task, description=f"[cyan]Collecting page {idx}/{len(queue)}: [dim]{url}")
+                    urls = self._collect_one_page(driver, url, idx)
+                    results[f"page_{idx}"] = urls
+                    progress.advance(collect_task)
+                    
+                    if idx < len(queue):
+                        time.sleep(cfg.inter_page_delay)
 
-            # 2. Continuous mode (if template provided but no end_page)
-            if cfg.url_template and cfg.end_page is None:
-                current_page = cfg.start_page
-                # Handle offset if we already processed some in the queue
-                # (though usually one wouldn't mix both, but we handle it)
-                idx_offset = len(queue)
-                
-                while True:
-                    idx_offset += 1
-                    url = cfg.url_template.format(page=current_page)
-                    _log.info("Searching for data on page %d (continuous mode): %s", current_page, url)
+                # 2. Continuous mode (if template provided but no end_page)
+                if cfg.url_template and cfg.end_page is None:
+                    current_page = cfg.start_page
+                    idx_offset = len(queue)
                     
-                    urls = self._collect_one_page(driver, url, idx_offset)
-                    if not urls:
-                        _log.info("No records found on page %d — stopping continuous collection.", current_page)
-                        break
+                    cont_task = progress.add_task("[magenta]Continuous search...", total=None)
                     
-                    results[f"page_{idx_offset}"] = urls
-                    _log.info("  → %d URLs collected", len(urls))
-                    
-                    current_page += cfg.page_increment
-                    time.sleep(cfg.inter_page_delay)
+                    while True:
+                        idx_offset += 1
+                        url = cfg.url_template.format(page=current_page)
+                        progress.update(cont_task, description=f"[magenta]Searching page {current_page}: [dim]{url}")
+                        
+                        urls = self._collect_one_page(driver, url, idx_offset)
+                        if not urls:
+                            progress.update(cont_task, description="[yellow]End of collection reached.")
+                            break
+                        
+                        results[f"page_{idx_offset}"] = urls
+                        current_page += cfg.page_increment
+                        time.sleep(cfg.inter_page_delay)
 
         finally:
             if own_driver and driver is not None:

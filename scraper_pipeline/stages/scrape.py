@@ -36,6 +36,8 @@ from scraper_pipeline.utils.driver import create_driver, perform_stealth_jitter
 from scraper_pipeline.utils.io import append_jsonl, jsonl_to_json
 from scraper_pipeline.utils.cloudflare import wait_for_bot_clearance
 
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn
+
 _log = logging.getLogger(__name__)
 
 
@@ -110,134 +112,115 @@ class ScraperEngine:
         is_first_url = True
 
         try:
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TaskProgressColumn(),
+                TimeRemainingColumn(),
+                expand=True
+            ) as progress:
+                scrape_task = progress.add_task("[green]Scraping articles...", total=len(urls))
+                # Initial progress for items already completed (skipped)
+                progress.advance(scrape_task, stats.skipped)
 
-            for url in urls:
-                if shutdown.is_set():
-                    _log.info("Shutdown flag — stopping before: %s", url)
-                    break
+                for url in urls:
+                    if shutdown.is_set():
+                        progress.update(scrape_task, description="[yellow]Shutdown requested...")
+                        break
 
-                # Check if we've hit the sampling limit (processed items, not just successes)
-                if cfg.sample_limit and stats.processed >= cfg.sample_limit:
-                    _log.info("Sample limit reached (%d items) — stopping.", cfg.sample_limit)
-                    break
+                    if cfg.sample_limit and stats.processed >= cfg.sample_limit:
+                        progress.update(scrape_task, description="[yellow]Sample limit reached.")
+                        break
 
-                if checkpoint.is_done(url):
-                    stats.record_skipped()
-                    continue
-
-                t_start = time.monotonic()
-                result: Optional[ScrapeResult] = None
-
-                for attempt in range(1, cfg.max_retries + 1):
-                    try:
-                        self._navigate_and_wait(driver, url, is_first_url)
-                        is_first_url = False
-
-                        record, missing = self._extractor.extract(driver)
-                        record["link"] = url
-
-                        result = ScrapeResult(
-                            url=url,
-                            record=record,
-                            missing_fields=missing,
-                            duration_sec=time.monotonic() - t_start,
-                            attempts=attempt,
-                        )
-                        break  # success
-
-                    except WebDriverException as exc:
-                        _log.error(
-                            "Chrome crash on %s (attempt %d): %s", url, attempt, exc
-                        )
-                        try:
-                            driver.quit()
-                        except Exception:
-                            pass
-                        driver = None
-
-                        driver_restarts += 1
-                        if driver_restarts > cfg.max_driver_restarts:
-                            _log.critical(
-                                "Max driver restarts (%d) hit — aborting.",
-                                cfg.max_driver_restarts,
-                            )
-                            shutdown.set()
-                            break
-
-                        _log.info("Restarting Chrome (restart #%d)...", driver_restarts)
-                        time.sleep(3)
-                        try:
-                            driver = create_driver(cfg.chrome)
-                        except Exception as restart_exc:
-                            _log.critical(
-                                "Driver restart failed: %s — aborting.", restart_exc
-                            )
-                            shutdown.set()
-                            break
-                        # Driver crash is not the page's fault — don't burn a retry
+                    if checkpoint.is_done(url):
                         continue
 
-                    except Exception as exc:
-                        if attempt < cfg.max_retries:
-                            backoff = cfg.retry_backoff_base**attempt + random.uniform(
-                                0, 1
-                            )
-                            _log.warning(
-                                "Attempt %d/%d failed on %s: %s — retrying in %.1fs",
-                                attempt,
-                                cfg.max_retries,
-                                url,
-                                exc,
-                                backoff,
-                            )
-                            time.sleep(backoff)
-                        else:
-                            _log.error(
-                                "All %d attempts exhausted on %s: %s",
-                                cfg.max_retries,
-                                url,
-                                exc,
-                            )
-                            if cfg.save_screenshots_on_failure and driver is not None:
-                                shot = self._save_screenshot(driver, url, screenshots)
-                                if shot:
-                                    _log.info("Debug screenshot: %s", shot)
+                    progress.update(scrape_task, description=f"[green]Scraping: [dim]{url}")
+                    
+                    t_start = time.monotonic()
+                    result: Optional[ScrapeResult] = None
+
+                    for attempt in range(1, cfg.max_retries + 1):
+                        try:
+                            self._navigate_and_wait(driver, url, is_first_url)
+                            is_first_url = False
+
+                            record, missing = self._extractor.extract(driver)
+                            record["link"] = url
+
                             result = ScrapeResult(
                                 url=url,
-                                error=str(exc),
+                                record=record,
+                                missing_fields=missing,
                                 duration_sec=time.monotonic() - t_start,
                                 attempts=attempt,
                             )
+                            break  # success
 
-                if shutdown.is_set() and driver is None:
-                    break
+                        except WebDriverException as exc:
+                            progress.update(scrape_task, description=f"[red]Chrome crashed, restarting...")
+                            try:
+                                driver.quit()
+                            except Exception:
+                                pass
+                            driver = None
 
-                if result is None:
-                    result = ScrapeResult(
-                        url=url,
-                        error="No result produced (driver abort?)",
-                        duration_sec=time.monotonic() - t_start,
-                    )
+                            driver_restarts += 1
+                            if driver_restarts > cfg.max_driver_restarts:
+                                shutdown.set()
+                                break
 
-                stats.record(result)
+                            time.sleep(3)
+                            try:
+                                driver = create_driver(cfg.chrome)
+                            except Exception:
+                                shutdown.set()
+                                break
+                            continue
 
-                # Write to JSONL BEFORE updating checkpoint
-                if result.is_success or result.is_partial:
-                    append_jsonl(output_jsonl, result.record)
-                    if result.missing_fields:
-                        append_jsonl(
-                            missing_jsonl,
-                            {"url": url, "missing_fields": result.missing_fields},
+                        except Exception as exc:
+                            if attempt < cfg.max_retries:
+                                backoff = cfg.retry_backoff_base**attempt + random.uniform(0, 1)
+                                progress.update(scrape_task, description=f"[yellow]Retry {attempt}/{cfg.max_retries} for [dim]{url}")
+                                time.sleep(backoff)
+                            else:
+                                if cfg.save_screenshots_on_failure and driver is not None:
+                                    self._save_screenshot(driver, url, screenshots)
+                                result = ScrapeResult(
+                                    url=url,
+                                    error=str(exc),
+                                    duration_sec=time.monotonic() - t_start,
+                                    attempts=attempt,
+                                )
+
+                    if shutdown.is_set() and driver is None:
+                        break
+
+                    if result is None:
+                        result = ScrapeResult(
+                            url=url,
+                            error="No result produced (driver abort?)",
+                            duration_sec=time.monotonic() - t_start,
                         )
-                else:
-                    append_jsonl(failed_jsonl, {"url": url, "error": result.error})
 
-                checkpoint.mark_done(url)
+                    stats.record(result)
 
-                if stats.processed % cfg.log_progress_every == 0:
-                    stats.log_progress(url)
+                    # Write to JSONL BEFORE updating checkpoint
+                    if result.is_success or result.is_partial:
+                        append_jsonl(output_jsonl, result.record)
+                        if result.missing_fields:
+                            append_jsonl(
+                                missing_jsonl,
+                                {"url": url, "missing_fields": result.missing_fields},
+                            )
+                    else:
+                        append_jsonl(failed_jsonl, {"url": url, "error": result.error})
 
-                time.sleep(random.uniform(cfg.request_delay_min, cfg.request_delay_max))
+                    checkpoint.mark_done(url)
+                    progress.advance(scrape_task)
+
+                    time.sleep(random.uniform(cfg.request_delay_min, cfg.request_delay_max))
 
         finally:
             if own_driver and driver is not None:
