@@ -7,14 +7,13 @@ Usage:
 """
 
 import sys
+import os
 import yaml
 import logging
 import argparse
 from pathlib import Path
 
 # Imports from scraper_pipeline (assumed to be in root)
-from scraper_pipeline import Pipeline, PipelineConfig
-
 from scraper_pipeline import Pipeline, PipelineConfig
 from scraper_pipeline.utils.logging_setup import setup_logging
 from scraper_pipeline.config import ChromeConfig, CollectorConfig, ScraperConfig
@@ -54,10 +53,16 @@ def run_from_yaml(yaml_path: str, headless: bool = False):
 
     # 1. Shared Chrome Config
     chrome_data = data.get("chrome", {})
+    user_data_dir = chrome_data.get("user_data_dir", "chrome_profile")
+    if user_data_dir:
+        # Resolve any environment variables (e.g. %LOCALAPPDATA%)
+        user_data_dir = os.path.expandvars(user_data_dir)
+
     chrome = ChromeConfig(
         chrome_version=chrome_data.get("version", 146),
         headless=headless,
-        user_data_dir=chrome_data.get("profile", "chrome_profile")
+        user_data_dir=user_data_dir,
+        profile_name=chrome_data.get("profile_name")
     )
 
     # 2. Collector Config

@@ -47,6 +47,11 @@ def create_driver(cfg: ChromeConfig) -> uc.Chrome:
         options.add_argument(f"--user-agent={ua}")
         _log.debug("Using UA: %s", ua)
 
+    # 6. Profile & Sub-profile
+    if cfg.profile_name:
+        options.add_argument(f"--profile-directory={cfg.profile_name}")
+        _log.debug("Using Sub-profile: %s", cfg.profile_name)
+
     # Ensure user_data_dir is absolute for stability
     user_data_dir = None
     if cfg.user_data_dir:
@@ -62,8 +67,12 @@ def create_driver(cfg: ChromeConfig) -> uc.Chrome:
             use_subprocess=True
         )
     except Exception as exc:
-        _log.error("Failed to start undetected-chromedriver: %s", exc)
-        _log.info("TIP: Try running 'taskkill /f /im chrome.exe' in your terminal and delete the 'chrome_profile' folder.")
+        msg = str(exc).lower()
+        if "profile in use" in msg or "cannot create default profile directory" in msg:
+            _log.critical("❌ CHROME PROFILE IS LOCKED: Please close all open Chrome windows on your computer and try again.")
+        else:
+            _log.error("Failed to start undetected-chromedriver: %s", exc)
+            _log.info("TIP: Try running 'taskkill /f /im chrome.exe' in your terminal and delete the 'chrome_profile' folder.")
         raise
     
     _log.debug(
