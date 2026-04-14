@@ -66,15 +66,11 @@ class Pipeline:
         work = Path(cfg.work_dir)
         work.mkdir(parents=True, exist_ok=True)
 
-        setup_logging(
-            log_file=cfg.resolve(cfg.log_file),
-            max_bytes=cfg.log_max_bytes,
-            backup_count=cfg.log_backup_count,
-        )
         _log.info("=" * 60)
-        _log.info("Pipeline starting | work_dir=%s", work)
+        _log.info("🚀 PIPELINE STARTING | work_dir=%s", work)
+        _log.info("=" * 60)
         _log.info(
-            "Stages: collect=%s dedup=%s scrape=%s",
+            "Stages: [Collect: %s] [Dedup: %s] [Scrape: %s]",
             cfg.run_collect,
             cfg.run_deduplicate,
             cfg.run_scrape,
@@ -89,7 +85,9 @@ class Pipeline:
             raw_urls_path = cfg.resolve(cfg.raw_urls_file)
 
             if cfg.run_collect:
-                _log.info("--- Stage 1: URL collection ---")
+                _log.info("-" * 60)
+                _log.info("📍 STAGE 1: URL Collection")
+                _log.info("-" * 60)
                 raw = URLCollector(cfg.collector).run(raw_urls_path, driver=driver)
                 result.urls_collected = sum(len(v) for v in raw.values())
             else:
@@ -101,7 +99,9 @@ class Pipeline:
             article_urls_path = cfg.resolve(cfg.article_urls_file)
 
             if cfg.run_deduplicate:
-                _log.info("--- Stage 2: Deduplication ---")
+                _log.info("-" * 60)
+                _log.info("🧹 STAGE 2: Deduplication")
+                _log.info("-" * 60)
                 urls = URLDeduplicator.run(raw_urls_path, article_urls_path)
                 result.urls_after_dedup = len(urls)
             else:
@@ -113,7 +113,9 @@ class Pipeline:
             scraped_path = cfg.resolve(cfg.scraped_data_file)
 
             if cfg.run_scrape:
-                _log.info("--- Stage 3: Scraping (%d URLs) ---", len(urls))
+                _log.info("-" * 60)
+                _log.info("🔎 STAGE 3: Scraping (%d URLs)", len(urls))
+                _log.info("-" * 60)
                 stats = ScraperEngine(cfg.scraper, self._extractor).run(
                     urls=urls,
                     output_path=scraped_path,
@@ -126,5 +128,7 @@ class Pipeline:
                 result.scraped_skipped = stats.skipped
                 result.output_file = str(scraped_path)
 
+        _log.info("=" * 60)
         result.log()
+        _log.info("=" * 60)
         return result
