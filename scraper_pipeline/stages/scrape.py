@@ -32,7 +32,7 @@ from selenium.common.exceptions import TimeoutException, WebDriverException
 from scraper_pipeline.config import ScraperConfig
 from scraper_pipeline.extractors.base import BaseExtractor
 from scraper_pipeline.models import CheckpointManager, ScrapeResult, StatsTracker
-from scraper_pipeline.utils.driver import create_driver
+from scraper_pipeline.utils.driver import create_driver, perform_stealth_jitter
 from scraper_pipeline.utils.io import append_jsonl, jsonl_to_json
 from scraper_pipeline.utils.cloudflare import wait_for_bot_clearance
 
@@ -116,9 +116,9 @@ class ScraperEngine:
                     _log.info("Shutdown flag — stopping before: %s", url)
                     break
 
-                # Check if we've hit the sampling limit
-                if cfg.sample_limit and stats.success >= cfg.sample_limit:
-                    _log.info("Sample limit reached (%d records) — stopping.", cfg.sample_limit)
+                # Check if we've hit the sampling limit (processed items, not just successes)
+                if cfg.sample_limit and stats.processed >= cfg.sample_limit:
+                    _log.info("Sample limit reached (%d items) — stopping.", cfg.sample_limit)
                     break
 
                 if checkpoint.is_done(url):
@@ -279,6 +279,9 @@ class ScraperEngine:
         if not wait_for_bot_clearance(driver, cfg.cloudflare, url):
             # If the block isn't cleared, we'll likely fail the indicator check below
             _log.warning("Could not clear bot challenge for: %s", url)
+
+        # Human-like interaction (scrolling, random waits)
+        perform_stealth_jitter(driver)
 
         if not is_first:
             time.sleep(random.uniform(1.0, cfg.post_nav_jitter))
