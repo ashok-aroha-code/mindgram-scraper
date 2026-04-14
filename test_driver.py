@@ -23,7 +23,6 @@ def test():
     # No profile_name needed — the folder IS the profile
 
     print(f"User Data Dir: {user_data_dir}")
-    print(f"Profile: {profile_name}")
 
     try:
         driver = uc.Chrome(
@@ -32,6 +31,7 @@ def test():
             user_data_dir=user_data_dir,
             use_subprocess=True
         )
+        driver.maximize_window()
         print("Driver started successfully!")
         driver.get("https://www.sciencedirect.com")
         time.sleep(5)

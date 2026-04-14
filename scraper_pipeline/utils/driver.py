@@ -162,6 +162,14 @@ def create_driver(cfg: ChromeConfig) -> uc.Chrome:
             user_data_dir=user_data_dir,
             use_subprocess=True
         )
+        
+        # Force window to be visible and on top
+        driver.maximize_window()
+        try:
+            driver.execute_script("window.focus();")
+        except Exception:
+            pass
+            
     except Exception as exc:
         msg = str(exc).lower()
         if "profile in use" in msg or "cannot create default profile directory" in msg:

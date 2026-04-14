@@ -58,8 +58,9 @@ def run_from_yaml(yaml_path: str, headless: bool = False):
         # Resolve any environment variables (e.g. %LOCALAPPDATA%)
         user_data_dir = os.path.expandvars(user_data_dir)
 
+    _log.info("Initializing Chrome (this should open a window)...")
     chrome = ChromeConfig(
-        chrome_version=chrome_data.get("version", 146),
+        chrome_version=chrome_data.get("version", 147),
         headless=headless,
         user_data_dir=user_data_dir,
         profile_name=chrome_data.get("profile_name")
