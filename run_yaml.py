@@ -92,10 +92,11 @@ def main():
     parser.add_argument("--headless", action="store_true", help="Run in headless mode")
     args = parser.parse_args()
 
-    # Minimal logging for the runner
+    # Minimal logging for the runner (production style)
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s [%(levelname)-8s] %(name)s — %(message)s"
+        format="[%(asctime)s] %(levelname)-8s — %(name)-15s — %(message)s",
+        datefmt="%H:%M:%S"
     )
 
     try:
