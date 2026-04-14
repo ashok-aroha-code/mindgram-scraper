@@ -56,6 +56,10 @@ def run_from_yaml(yaml_path: str, headless: bool = False):
     # 2. Collector Config
     collector = CollectorConfig(
         page_urls=listing.get("urls", []),
+        url_template=listing.get("url_template"),
+        start_page=listing.get("start_page", 1),
+        end_page=listing.get("end_page"),
+        page_increment=listing.get("page_increment", 1),
         css_selector=listing.get("item_selector", "a"),
         chrome=chrome
     )
@@ -63,6 +67,7 @@ def run_from_yaml(yaml_path: str, headless: bool = False):
     # 3. Scraper Config
     scraper = ScraperConfig(
         page_load_indicator_xpath=scraping.get("indicator_xpath", "//h1"),
+        sample_limit=data.get("sample"),
         chrome=chrome
     )
 

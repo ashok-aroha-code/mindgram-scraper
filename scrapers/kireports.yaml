@@ -3,10 +3,17 @@ name: "WCN 2026 Annual Meeting"
 date: "2026-04-01"
 
 listing:
-  urls:
-    - "https://www.kireports.org/issue/S2468-0249(26)X2002-2?pageStart=0"
-    - "https://www.kireports.org/issue/S2468-0249(26)X2002-2?pageStart=50"
+  # Dynamic Pagination
+  url_template: "https://www.kireports.org/issue/S2468-0249(26)X2002-2?pageStart={page}"
+  start_page: 0
+  end_page: null        # Scrape until no more results
+  page_increment: 50
+
+  urls: []
   item_selector: "h3 a"
+
+# Testing Mode: Limit total items scraped (e.g., sample: 5). Set to null for full run.
+sample: null
 
 scraping:
   indicator_xpath: '(//h4[@class="panel-title-text"])[1]'

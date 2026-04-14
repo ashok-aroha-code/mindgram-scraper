@@ -1,0 +1,44 @@
+# Template for creating a new scraper
+# Usage: python run_yaml.py scrapers/ASE_2024.yaml
+
+name: "Journal of the American Society of Echocardiography (ASE) 2024"
+date: "2024-01-01"
+
+# Step 1: URL Collection
+listing:
+  # Dynamic Pagination Mode
+  url_template: "https://www.sciencedirect.com/journal/journal-of-the-american-society-of-echocardiography/vol/37/issue/{page}"
+  start_page: 1
+  end_page: 12        # Set to null to scrape until no more records are found
+  page_increment: 1
+
+  # All paginated listing pages (Optional: used only if url_template is missing)
+  urls: []
+  
+  # CSS selector for the <a> tags to individual articles
+  item_selector: "a.article-content-title"
+
+# Testing Mode: Limit the total number of items scraped (remove when ready for full run)
+sample: 5
+
+# Step 2: Content Scraping
+scraping:
+  # XPath of an element whose presence signals the page is fully loaded
+  indicator_xpath: '//*[@id="screen-reader-main-title"]' 
+
+  # Field map: field_name: "selector"
+  # Support: CSS ("h1"), XPath ("//h1"), Attributes ("img@src"), Text force ("@text")
+  fields:
+    title: '//*[@id="screen-reader-main-title"]'
+    authors: '#author-group .author'
+    abstract: '#abstracts'
+    doi: 'a.doi'
+    date: '.text-xs'
+
+# Optional: Chrome settings
+chrome:
+  version: 146
+  profile: "chrome_profile"
+
+# Final output filename
+output: "ASE_2024_data.json"

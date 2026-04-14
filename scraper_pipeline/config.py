@@ -72,6 +72,10 @@ class CollectorConfig:
     """
 
     page_urls: List[str] = field(default_factory=list)
+    url_template: Optional[str] = None  # e.g. "https://site.com/p={page}"
+    start_page: int = 1
+    end_page: Optional[int] = None
+    page_increment: int = 1
 
     # ✏️  CSS selector that matches the <a> tags for individual articles
     css_selector: str = "h3 a"
@@ -112,6 +116,7 @@ class ScraperConfig:
 
     # --- Progress logging -----------------------------------------------------
     log_progress_every: int = 10
+    sample_limit: Optional[int] = None  # Stop after scraping this many records
 
     # --- Debug ----------------------------------------------------------------
     save_screenshots_on_failure: bool = True

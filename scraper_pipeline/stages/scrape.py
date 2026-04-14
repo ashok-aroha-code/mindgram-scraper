@@ -112,6 +112,11 @@ class ScraperEngine:
                     _log.info("Shutdown flag — stopping before: %s", url)
                     break
 
+                # Check if we've hit the sampling limit
+                if cfg.sample_limit and stats.success >= cfg.sample_limit:
+                    _log.info("Sample limit reached (%d records) — stopping.", cfg.sample_limit)
+                    break
+
                 if checkpoint.is_done(url):
                     stats.record_skipped()
                     continue

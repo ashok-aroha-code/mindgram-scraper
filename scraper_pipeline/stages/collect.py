@@ -42,27 +42,54 @@ class URLCollector:
 
     def run(self, output_path: Path) -> dict[str, list[str]]:
         """
-        Collect URLs from all configured listing pages using a single browser instance.
+        Collect URLs from listing pages using dynamic pagination if configured.
         """
         cfg = self._cfg
-        if not cfg.page_urls:
-            _log.warning("CollectorConfig.page_urls is empty — nothing to collect.")
-            return {}
-
         results: dict[str, list[str]] = OrderedDict()
         driver = None
 
+        # Build initial queue from static URLs or dynamic template
+        queue: list[str] = list(cfg.page_urls)
+        
+        # If range mode is configured (start and end page)
+        if cfg.url_template and cfg.end_page is not None:
+            for p in range(cfg.start_page, cfg.end_page + 1, cfg.page_increment):
+                queue.append(cfg.url_template.format(page=p))
+        
         try:
-            # Open browser once for all pages
             driver = create_driver(cfg.chrome)
 
-            for idx, page_url in enumerate(cfg.page_urls, 1):
-                _log.info("Collecting page %d/%d: %s", idx, len(cfg.page_urls), page_url)
-                urls = self._collect_one_page(driver, page_url, idx)
+            # 1. Process the queued URLs
+            for idx, url in enumerate(queue, 1):
+                _log.info("Collecting page %d/%d: %s", idx, len(queue), url)
+                urls = self._collect_one_page(driver, url, idx)
                 results[f"page_{idx}"] = urls
                 _log.info("  → %d URLs collected", len(urls))
+                
+                if idx < len(queue):
+                    time.sleep(cfg.inter_page_delay)
 
-                if idx < len(cfg.page_urls):
+            # 2. Continuous mode (if template provided but no end_page)
+            if cfg.url_template and cfg.end_page is None:
+                current_page = cfg.start_page
+                # Handle offset if we already processed some in the queue
+                # (though usually one wouldn't mix both, but we handle it)
+                idx_offset = len(queue)
+                
+                while True:
+                    idx_offset += 1
+                    url = cfg.url_template.format(page=current_page)
+                    _log.info("Searching for data on page %d (continuous mode): %s", current_page, url)
+                    
+                    urls = self._collect_one_page(driver, url, idx_offset)
+                    if not urls:
+                        _log.info("No records found on page %d — stopping continuous collection.", current_page)
+                        break
+                    
+                    results[f"page_{idx_offset}"] = urls
+                    _log.info("  → %d URLs collected", len(urls))
+                    
+                    current_page += cfg.page_increment
                     time.sleep(cfg.inter_page_delay)
 
         finally:

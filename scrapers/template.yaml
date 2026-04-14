@@ -6,13 +6,22 @@ date: "2026-04-01"
 
 # Step 1: URL Collection
 listing:
-  # All paginated listing pages
+  # Option A: Dynamic Pagination (Recommended)
+  # Uses {page} placeholder to generate URLs
+  url_template: "https://example.org/issue/123?pageStart={page}"
+  start_page: 0
+  end_page: null        # Set to a number for range, or null to scrape until no results
+  page_increment: 50     # How much to add to {page} in each step
+
+  # Option B: Static URLs (Used only if url_template is empty)
   urls:
     - "https://example.org/issue/123?pageStart=0"
-    - "https://example.org/issue/123?pageStart=50"
   
   # CSS selector for the <a> tags to individual articles
   item_selector: "h3.title a"
+
+# Testing Mode: Limit total items scraped (e.g., sample: 5). Set to null for full run.
+sample: null
 
 # Step 2: Content Scraping
 scraping:
