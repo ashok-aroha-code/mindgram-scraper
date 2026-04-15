@@ -142,7 +142,7 @@ class ScraperEngine:
                             if driver_restarts > cfg.max_driver_restarts:
                                 shutdown.set()
                                 break
-                            time.sleep(3)
+                            time.sleep(random.uniform(5, 10))
                             try:
                                 driver = create_driver(cfg.chrome)
                             except Exception:
